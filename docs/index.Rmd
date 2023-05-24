@@ -96,6 +96,8 @@ cov2cor(tc.mat) |>
     insight::print_html()
 ```
 
+# Visualizing the results
+
 The following plot shows effect sizes (black dots) and their confidence ellipses (dashed line). Red diamonds show the univariate effects, blue diamond shows the bivariate effect with confidence interval (blue line).
 
 ```{r}
