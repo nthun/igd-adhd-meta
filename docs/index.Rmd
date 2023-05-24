@@ -2,7 +2,12 @@
 title: "IGD-ADHD SEM MA"
 author: "Tamás Nagy"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+   theme: spacelab
+   code_download: true
+   toc: true
+   toc_float: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -15,14 +20,31 @@ library(googlesheets4)
 library(metaSEM)
 ```
 
+# Background
+
+In the following document, we use a SEM meta-analysis to investigate the evidence from several studies, that had data on the correlation between internet gaming disorder (IGD) and ADHD. ADHD has two main factors (Hyperactivity/impulsivity, Inattention), thus both were used as outcomes. In a SEM meta-analysis, it is possible to jointly investigate the evidence for both factors.
+
+According to ChatGPT, these are the advantages of this method:
+
+*"When dealing with two correlated outcomes in a meta-analysis, using a structural equation modeling (SEM) meta-analysis approach can have several advantages compared to conducting two separate meta-analyses. Here are some potential benefits of using SEM meta-analysis:*
+
+*Simultaneous analysis of multiple outcomes: SEM allows for the simultaneous analysis of multiple outcomes within a single model. This enables the examination of the relationships between the outcomes, including their direct and indirect effects, while accounting for their correlation. By combining the two outcomes into a single model, you can gain a more comprehensive understanding of the underlying relationships and dependencies between them.*
+
+*Enhanced statistical power: When conducting separate meta-analyses for each outcome, you may have limited statistical power, especially if the number of studies is relatively small or if the effects of interest are modest. Combining the outcomes in an SEM meta-analysis can increase statistical power by utilizing the information from both outcomes, leading to more precise estimates and potentially more reliable findings.*
+
+*Better handling of correlated effects: In a traditional meta-analysis, correlations between outcomes from the same study are often neglected, treating each outcome independently. However, in an SEM meta-analysis, the correlated effects can be explicitly modeled. This approach allows for a more accurate estimation of the true relationships between the outcomes and can provide a more nuanced understanding of the underlying constructs being measured."*
 
 ```{r}
 # Set the estimated correlation between outcomes
 est_r <- .5
 ```
 
-```{r}
 # Read and process data
+
+Calculating the study level covariances between the two outcomes. We only use the effect sizes that were calculated for Hyperactivity/impulsivity and Inattention. We use an estimated correlation between the two outcomes
+
+```{r message=FALSE, warning=FALSE}
+
 igd_raw <- range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY")
 
 igd <-
@@ -41,6 +63,14 @@ igd <-
     drop_na()
 ```
 
+# Fitting the SEM meta-analysis model
+
+The model shows the univariate effect sizes: Intercept1 is for hyperactivity, Intercept2 is for Inattention. Both of them are significantly larger than zero.
+
+I\^2 statistics show a high heterogeneity for both outcomes (\>95%).
+
+The direct estimates of the between-study heterogeneity variance (Tau2) are provided for both outcomes, and the third is the estimated covariance between the outcomes.
+
 ```{r}
 sem_igd <- 
     meta(y = cbind(z_hyper, z_inat),
@@ -48,12 +78,12 @@ sem_igd <-
          data = igd)
 
 summary(sem_igd)
-
-
 ```
 
-
 # The correlation between effects on the two outcomes
+
+Based on the Tau2 statistics, we can calculate the correlation between the two outcomes. We found that there is a high positive correlation, which means a strong association between these constructs across the included studies.
+
 ```{r}
 tau.coefs <- coef(sem_igd, select = "random")
 tc.mat <- vec2symMat(tau.coefs) 
@@ -66,13 +96,11 @@ cov2cor(tc.mat) |>
     insight::print_html()
 ```
 
-The following plot shows effect sizes (black dots) and their confidence ellipses (dashed line).
-Red diamonds show the univariate effects, blue diamond shows the bivariate effect with confidence interval (blue line).
-
+The following plot shows effect sizes (black dots) and their confidence ellipses (dashed line). Red diamonds show the univariate effects, blue diamond shows the bivariate effect with confidence interval (blue line).
 
 ```{r}
 plot(sem_igd, 
-     axis.labels = c("Hyperactivity", "Inattention"), 
+     axis.labels = c("Hyperactivity/impulsivity", "Inattention"), 
      randeff.ellipse.col = NULL,
      univariate.arrows.col = NULL,
      univariate.polygon.col = "red",
@@ -82,6 +110,3 @@ plot(sem_igd,
      main = NULL) +
      abline(h = 0, v = 0)
 ```
-
-
-
