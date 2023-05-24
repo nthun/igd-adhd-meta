@@ -101,7 +101,7 @@ cov2cor(tc.mat) |>
 The following plot shows effect sizes (black dots) and their confidence ellipses (dashed line). Red diamonds show the univariate effects, blue diamond shows the bivariate effect with confidence interval (blue line).
 
 ```{r}
-plot(sem_igd, 
+plot.meta(sem_igd, 
      axis.labels = c("Hyperactivity/impulsivity", "Inattention"), 
      randeff.ellipse.col = NULL,
      univariate.arrows.col = NULL,
@@ -109,6 +109,7 @@ plot(sem_igd,
      estimate.ellipse.col = "blue",
      estimate.col = "blue",
      asp=1,
+     univariate.lines.col = NULL,
      main = NULL) +
-     abline(h = 0, v = 0)
+     abline(h = 0, v = 0, col = "gray", lty = "dotted")
 ```
