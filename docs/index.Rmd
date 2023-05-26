@@ -12,12 +12,13 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(googlesheets4)
 library(metaSEM)
+library(insight)
 ```
 
 # Background
@@ -34,24 +35,33 @@ According to ChatGPT, these are the advantages of this method:
 
 *Better handling of correlated effects: In a traditional meta-analysis, correlations between outcomes from the same study are often neglected, treating each outcome independently. However, in an SEM meta-analysis, the correlated effects can be explicitly modeled. This approach allows for a more accurate estimation of the true relationships between the outcomes and can provide a more nuanced understanding of the underlying constructs being measured."*
 
-```{r}
-# Set the estimated correlation between outcomes
-est_r <- .5
-```
-
 # Read and process data
 
-Calculating the study level covariances between the two outcomes. We only use the effect sizes that were calculated for Hyperactivity/impulsivity and Inattention. We use an estimated correlation between the two outcomes
+In the first step, we summarize the study-level correlation data of the two outcomes. 
+
+```{r message=FALSE, warning=FALSE}
+# Getting the correlation of outcomes
+ih_corr <- 
+    range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY", sheet = 2) |> 
+    janitor::clean_names()
+
+est_r <- weighted.mean(ih_corr$inattention_hiperactivity_correlation, 
+                       w = ih_corr$sample_size)
+
+```
+
+Based on the weighted mean of `r nrow(ih_corr)` studies, we found that the mean correlation is `r est_r`. In the second step, we calculate the study-level covariances between the two outcomes. 
 
 ```{r message=FALSE, warning=FALSE}
 
-igd_raw <- range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY")
+igd_raw <- range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY", sheet = 1)
 
 igd <-
     igd_raw |> 
     janitor::clean_names() |> 
     # Calculate variance by squaring the standard errors
     transmute(study_name, outcome, z = fishers_z, var_z = std_err_z^2) |> 
+    # Only use the two main outcomes
     filter(outcome != "Combined") |> 
     mutate(outcome = if_else(outcome == "Inattention", "inat", "hyper")) |> 
     pivot_wider(names_from = outcome, 
@@ -93,7 +103,7 @@ dimnames(tc.mat)[[1]] <- dimnames(tc.mat)[[2]] <- c("Hyperactivity",
 cov2cor(tc.mat) |> 
     as.data.frame() |> 
     rownames_to_column() |> 
-    insight::print_html()
+    print_html()
 ```
 
 # Visualizing the results
