@@ -19,6 +19,9 @@ library(tidyverse)
 library(googlesheets4)
 library(metaSEM)
 library(insight)
+library(esc)
+
+outcomes <- c("Hyperactivity", "Inattention")
 ```
 
 # Background
@@ -50,7 +53,7 @@ est_r <- weighted.mean(ih_corr$inattention_hiperactivity_correlation,
 
 ```
 
-Based on the weighted mean of `r nrow(ih_corr)` studies, we found that the mean correlation is `r est_r`. In the second step, we calculate the study-level covariances between the two outcomes. 
+Based on the weighted mean of `r nrow(ih_corr)` studies, we found that the mean correlation is `r round(est_r, 2)`. In the second step, we calculate the study-level covariances between the two outcomes. 
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -90,6 +93,19 @@ sem_igd <-
 summary(sem_igd)
 ```
 
+For interpretation, Z values can be converted back to r values, along with confidence intervals.
+
+```{r}
+
+tibble(outcome = outcomes, 
+       coef = coef(sem_igd)[1:2]) |> 
+    bind_cols(confint(sem_igd)[1:2,]) |> 
+    mutate(across(-outcome, convert_z2r)) |> 
+    print_html()
+
+```
+
+
 # The correlation between effects on the two outcomes
 
 Based on the Tau2 statistics, we can calculate the correlation between the two outcomes. We found that there is a high positive correlation, which means a strong association between these constructs across the included studies.
@@ -97,8 +113,7 @@ Based on the Tau2 statistics, we can calculate the correlation between the two o
 ```{r}
 tau.coefs <- coef(sem_igd, select = "random")
 tc.mat <- vec2symMat(tau.coefs) 
-dimnames(tc.mat)[[1]] <- dimnames(tc.mat)[[2]] <- c("Hyperactivity", 
-                                                    "Inattention")
+dimnames(tc.mat)[[1]] <- dimnames(tc.mat)[[2]] <- outcomes
 
 cov2cor(tc.mat) |> 
     as.data.frame() |> 
@@ -112,14 +127,17 @@ The following plot shows effect sizes (black dots) and their confidence ellipses
 
 ```{r}
 plot.meta(sem_igd, 
-     axis.labels = c("Hyperactivity/impulsivity", "Inattention"), 
+     axis.labels = c("Hyperactivity/impulsivity (Fisher's z)", "Inattention (Fisher's z)"), 
      randeff.ellipse.col = NULL,
      univariate.arrows.col = NULL,
      univariate.polygon.col = "red",
      estimate.ellipse.col = "blue",
      estimate.col = "blue",
-     asp=1,
+     asp = 1,
      univariate.lines.col = NULL,
      main = NULL) +
      abline(h = 0, v = 0, col = "gray", lty = "dotted")
 ```
+
+
+
