@@ -1,5 +1,5 @@
 ---
-title: "IGD-ADHD SEM MA"
+title: "GD-ADHD SEM MA"
 author: "Tamás Nagy"
 date: "`r Sys.Date()`"
 output: 
@@ -26,7 +26,7 @@ outcomes <- c("Hyperactivity", "Inattention")
 
 # Background
 
-In the following document, we use a SEM meta-analysis to investigate the evidence from several studies, that had data on the correlation between internet gaming disorder (IGD) and ADHD. ADHD has two main factors (Hyperactivity/impulsivity, Inattention), thus both were used as outcomes. In a SEM meta-analysis, it is possible to jointly investigate the evidence for both factors.
+In the following document, we use a SEM meta-analysis to investigate the evidence from several studies, that had data on the correlation between gaming disorder (GD) and ADHD. ADHD has two main factors (Hyperactivity/impulsivity, Inattention), thus both were used as outcomes. In a SEM meta-analysis, it is possible to jointly investigate the evidence for both factors.
 
 According to ChatGPT, these are the advantages of this method:
 
@@ -40,7 +40,7 @@ According to ChatGPT, these are the advantages of this method:
 
 # Read and process data
 
-In the first step, we summarize the study-level correlation data of the two outcomes. 
+In the first step, we summarize the study-level correlation data of the two outcomes. To meet distributional assumptions for averaging correlation coefficients, we converted rs to zs, then calculate the weighted mean, and back-transform the z value into r.
 
 ```{r message=FALSE, warning=FALSE}
 # Getting the correlation of outcomes
@@ -48,8 +48,10 @@ ih_corr <-
     range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY", sheet = 2) |> 
     janitor::clean_names()
 
-est_r <- weighted.mean(ih_corr$inattention_hiperactivity_correlation, 
-                       w = ih_corr$sample_size)
+est_r <- 
+    convert_r2z(ih_corr$inattention_hiperactivity_correlation) |> 
+    weighted.mean(w = ih_corr$sample_size) |> 
+    convert_z2r()
 
 ```
 
@@ -57,10 +59,10 @@ Based on the weighted mean of `r nrow(ih_corr)` studies, we found that the mean 
 
 ```{r message=FALSE, warning=FALSE}
 
-igd_raw <- range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY", sheet = 1)
+gd_raw <- range_read("1kSmnj8Jy9BydAyrsVJxpTvZSS53tus-aBigIHJujQQY", sheet = 1)
 
-igd <-
-    igd_raw |> 
+gd <-
+    gd_raw |> 
     janitor::clean_names() |> 
     # Calculate variance by squaring the standard errors
     transmute(study_name, outcome, z = fishers_z, var_z = std_err_z^2) |> 
@@ -85,12 +87,12 @@ I\^2 statistics show a high heterogeneity for both outcomes (\>95%).
 The direct estimates of the between-study heterogeneity variance (Tau2) are provided for both outcomes, and the third is the estimated covariance between the outcomes.
 
 ```{r}
-sem_igd <- 
+sem_gd <- 
     meta(y = cbind(z_hyper, z_inat),
          v = cbind(var_z_hyper, cov_est, var_z_inat),
-         data = igd)
+         data = gd)
 
-summary(sem_igd)
+summary(sem_gd)
 ```
 
 For interpretation, Z values can be converted back to r values, along with confidence intervals.
@@ -98,8 +100,8 @@ For interpretation, Z values can be converted back to r values, along with confi
 ```{r}
 
 tibble(outcome = outcomes, 
-       coef = coef(sem_igd)[1:2]) |> 
-    bind_cols(confint(sem_igd)[1:2,]) |> 
+       coef = coef(sem_gd)[1:2]) |> 
+    bind_cols(confint(sem_gd)[1:2,]) |> 
     mutate(across(-outcome, convert_z2r)) |> 
     print_html()
 
@@ -111,7 +113,7 @@ tibble(outcome = outcomes,
 Based on the Tau2 statistics, we can calculate the correlation between the two outcomes. We found that there is a high positive correlation, which means a strong association between these constructs across the included studies.
 
 ```{r}
-tau.coefs <- coef(sem_igd, select = "random")
+tau.coefs <- coef(sem_gd, select = "random")
 tc.mat <- vec2symMat(tau.coefs) 
 dimnames(tc.mat)[[1]] <- dimnames(tc.mat)[[2]] <- outcomes
 
@@ -126,7 +128,7 @@ cov2cor(tc.mat) |>
 The following plot shows effect sizes (black dots) and their confidence ellipses (dashed line). Red diamonds show the univariate effects, blue diamond shows the bivariate effect with confidence interval (blue line).
 
 ```{r}
-plot.meta(sem_igd, 
+plot.meta(sem_gd, 
      axis.labels = c("Hyperactivity/impulsivity (Fisher's z)", "Inattention (Fisher's z)"), 
      randeff.ellipse.col = NULL,
      univariate.arrows.col = NULL,
